@@ -110,30 +110,25 @@ Call {
 }
 ```
 
-### Bland Pathways Integration (Flow & Endpoints)
+### Bland Calls API Integration (Task‑based)
 
-**Goal**: use Bland’s Pathways + Calls API to run a deterministic Plan → Call → Analyze loop: place calls, detect IVRs, fetch high‑quality transcripts, and update the tree.
+**Goal**: use Bland’s Calls API with a task prompt to run a deterministic Plan → Call → Analyze loop: place calls, detect IVRs, fetch high‑quality transcripts, and update the tree.
 
 **Core endpoints we will call**
 
-1. **POST /v1/calls** — start a call with a Pathway agent. Key body fields: `phone_number`, `pathway_id`, `wait_for_greeting: true`, optional `voicemail_detect`, `max_duration`, `record: true`. Returns `id`.
-2. **GET /v1/calls/{id}** — poll call status and retrieve `answered_by`, `status`, `price`, `recording_url`, `concatenated_transcript`, and granular `transcripts`.
-3. **GET /v1/calls/{id}/correct** — fetch corrected & aligned transcripts (preferred for parsing).
+1. **POST /v1/calls** — start a task‑based call. Key body fields: `phone_number`, `task`, `wait_for_greeting: true`, optional `voicemail_detect`, `max_duration`, `record: true`. Returns `call_id`.
+2. **GET /v1/calls/{call\_id}** — poll call status and retrieve `answered_by`, `status`, `price`, `recording_url`, `concatenated_transcript`, and granular `transcripts`.
+3. **GET /v1/calls/{call\_id}/correct** — fetch corrected & aligned transcripts (preferred for parsing).
 4. **GET /v1/calls** — list recent calls (optional, for history reconciliation).
 5. **POST /v1/postcall/webhooks/create** *(optional)* — push completed call payloads to our backend instead of polling.
 
-> Note: The **Bland Turbo** model excludes IVR navigation; we will use the default model for IVR flows and enable `wait_for_greeting` to avoid speaking first.
-
-**Pathways usage (minimal for MVP)**
-
-* Create a single, simple Pathway that keeps the agent silent unless it needs to select a menu option. The agent should: (a) listen for the full prompt, (b) if we instruct it to choose an option, say the word (e.g., “one”) to navigate (most IVRs accept spoken digits), and (c) end the call if silence/timeout or terminal message is detected. Sending spoken digits is sufficient for many IVRs.
-* We set `record: true` so we can access corrected transcripts later.
+> Note: Keep `wait_for_greeting` enabled so the agent does not speak before the menu completes.
 
 **Plan → Call → Analyze loop (single call in flight; max calls cap)**
 
 1. **Plan**: determine the next path to traverse. If a runtime target path is provided (e.g., `1 → 2 → 4`), follow it. Otherwise, choose the first available option at each level that remains unvisited.
-2. **Call**: start `POST /v1/calls` with the agent configured to stay silent, listen fully, then speak only the required digit word (e.g., "one").
-3. **Analyze**: poll `GET /v1/calls/{id}` (and prefer `GET /v1/calls/{id}/correct`) to collect transcripts, extract options, and determine whether the branch ended (operator/voicemail/dead end) or leads to another menu.
+2. **Call**: start `POST /v1/calls` with a task that instructs the agent to stay silent, listen fully, then speak only the required digit word (e.g., "one").
+3. **Analyze**: poll `GET /v1/calls/{call_id}` (prefer `GET /v1/calls/{call_id}/correct`) to collect transcripts, extract options, and determine whether the branch ended (operator/voicemail/dead end) or leads to another menu.
 4. **Persist**: record call details, update/add nodes, and mark the traversed path as visited.
 5. **Repeat** until all deterministically enumerated paths from discovered menus have been traversed or the maximum total call count is reached.
 
@@ -144,7 +139,7 @@ Call {
 
 **What we read from Bland per call**
 
-* `answered_by`, `status`, `price`, `concatenated_transcript`, `transcripts[]`, optional `recording_url`, and (if Pathway) `pathway_logs`. These fields power confidence scoring, history, and visualization.
+* `answered_by`, `status`, `price`, `concatenated_transcript`, `transcripts[]`, optional `recording_url`. These fields power confidence scoring, history, and visualization.
 
 ## Frontend (Next.js App)
 
@@ -202,9 +197,9 @@ Call {
 
 ## Bland API Interaction (Summary)
 
-* `POST /v1/calls`: start a call with a Pathway agent (`phone_number`, `pathway_id`, `wait_for_greeting: true`, `voicemail_detect: true`, `record: true`, `max_duration`).
-* `GET /v1/calls/{id}`: poll `status`, `answered_by`, `price`, `concatenated_transcript`, `transcripts`.
-* `GET /v1/calls/{id}/correct`: get corrected/aligned transcript (preferred for parsing).
+* `POST /v1/calls`: start a task‑based call (`phone_number`, `task`, `wait_for_greeting: true`, `voicemail_detect: true`, `record: true`, `max_duration`).
+* `GET /v1/calls/{call_id}`: poll `status`, `answered_by`, `price`, `concatenated_transcript`, `transcripts`.
+* `GET /v1/calls/{call_id}/correct`: get corrected/aligned transcript (preferred for parsing).
 * Optional: `GET /v1/calls` (history) and `POST /v1/postcall/webhooks/create` (async completion).
 
 ## Sequential Plan → Call → Analyze (Summary)

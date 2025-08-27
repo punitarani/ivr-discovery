@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "composite": true,
+    "moduleResolution": "bundler",
+    "module": "esnext",
+    "target": "es2020"
+  },
+  "include": ["src/**/*"]
+}

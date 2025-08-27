@@ -5,8 +5,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "lint": "biome lint src/ --write",
-    "format": "biome format src/ --write",
+    "lint": "biome lint --write",
+    "format": "biome format --write",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -14,7 +14,8 @@
     "@hono/node-server": "latest",
     "@hono/trpc-server": "latest",
     "@trpc/server": "latest",
-    "zod": "latest"
+    "zod": "latest",
+    "@ivr/common": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "latest",

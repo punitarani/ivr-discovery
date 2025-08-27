@@ -18,6 +18,20 @@ Build an automated explorer that calls a target phone number, detects IVR menus,
 
 ### Backend API Contract (ours)
 
+All request/response shapes are defined in a shared package and validated with Zod. The shared models are the source of truth for types across backend and frontend.
+
+Import path for shared models:
+
+```ts
+import { models } from '@ivr/common'
+
+// Examples
+models.DiscoverInputSchema
+models.TreeOutputSchema
+models.NodeSchema
+models.CallSchema
+```
+
 * **POST `/discover`**
   * **Body**:
     ```json
@@ -86,9 +100,9 @@ Build an automated explorer that calls a target phone number, detects IVR menus,
 
 ***
 
-### Discovery Flow (BFS + Concurrency)
+### Discovery Flow (Deterministic Single-Flight Loop)
 
-* **Limits**: `maxDepth = 10`, `maxBreadthPerNode = 10`, `maxTotalCalls = 10`, `maxInflightCalls = 10`.
+* **Limits**: `maxDepth = 10`, `maxBreadthPerNode = 10`, `maxTotalCalls = 10`, `maxInflightCalls = 1`.
 
 * **Job shape**:
   ```json
@@ -100,10 +114,9 @@ Build an automated explorer that calls a target phone number, detects IVR menus,
   }
   ```
 
-* **BFS queue**:
+* **Queue**:
   * Maintain a FIFO queue of jobs.
-  * Maintain a semaphore `inflight <= 10` to cap concurrent calls.
-  * Each completed/failed call decrements the semaphore and dispatches the next queued job.
+  * Single in-flight call at any time (`inflight <= 1`). Dispatch the next job only after the prior call completes.
 
 * **Root**:
   1. Enqueue `{digits: [], depth: 0}` and start a call with the agent configured to only listen.
@@ -135,11 +148,11 @@ Build an automated explorer that calls a target phone number, detects IVR menus,
 
 ### Persistence Model
 
-* **Session**: `{ id, phone, status, rootNodeId, calls[], costTotal, createdAt }`
+* **Session**: `{ id, phone, status, rootNodeId, calls[], costTotal, createdAt }` (see `models.SessionSchema`)
 
-* **Node**: `{ id, sessionId, parentId, promptText, options[{ digit, label, nodeId }], confidence, depth, pathDigits[] }`
+* **Node**: `{ id, sessionId, parentId, promptText, options[{ digit, label, nodeId }], confidence, depth, pathDigits[] }` (see `models.NodeSchema` for view shape)
 
-* **Call**: `{ id, sessionId, nodeId, answered_by, transcript, price, status, createdAt }`
+* **Call**: `{ id, sessionId, nodeId, answered_by, transcript, price, status, createdAt }` (see `models.CallSchema`)
 
 * **Updates**:
   * After each call: persist call record, update/insert node, recalc `costTotal`.
