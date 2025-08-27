@@ -13,6 +13,7 @@ build
 
 # Production
 dist/
+tsconfig.tsbuildinfo
 
 # Misc
 .DS_Store
