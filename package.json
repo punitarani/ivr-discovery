@@ -1,0 +1,21 @@
+{
+  "name": "ivr",
+  "private": true,
+  "packageManager": "bun@1.2.18",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "type-check": "turbo run type-check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.2",
+    "turbo": "^2.5.6"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
