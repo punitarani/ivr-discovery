@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { postDiscover } from '@/lib/api'
+import { type DiscoverResponse, postDiscover } from '@/lib/api'
 
 const ONE_PHONE_NUMBER = '+15555555555'
 
@@ -42,8 +42,9 @@ export default function Home() {
           'Invalid phone number. Use E.164 like +1XXXXXXXXXX or US 10-digit.'
         )
       }
-      await postDiscover(normalized)
-      router.push(`/${encodeURIComponent(normalized)}`)
+      const resp: DiscoverResponse = await postDiscover(normalized)
+      // Use formatted sessionId from backend
+      router.push(`/${encodeURIComponent(resp.sessionId)}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Discover failed'
       setError(message)

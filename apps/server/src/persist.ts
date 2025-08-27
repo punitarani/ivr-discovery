@@ -86,6 +86,21 @@ export async function saveSession(
   await fs.writeFile(file, payload, 'utf8')
 }
 
+/**
+ * Ensures there is a persisted session file for the given phone.
+ * If one does not exist, create a minimal scaffold so GET endpoints don't 404 immediately.
+ */
+export async function ensureSessionScaffold(
+  phone: string,
+  options?: { maxCalls?: number; minCalls?: number }
+): Promise<PersistedSession> {
+  const existing = await loadSession(phone)
+  if (existing) return existing
+  const scaffold = createEmptySession(phone, options)
+  await saveSession(phone, scaffold)
+  return scaffold
+}
+
 export function createEmptySession(
   phone: string,
   options?: { maxCalls?: number; minCalls?: number }

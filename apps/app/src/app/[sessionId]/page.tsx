@@ -22,7 +22,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import type { Node, TreeOutput } from '@/lib/api'
-import { getCallHistory, getTree, postDiscover, postRefine } from '@/lib/api'
+import {
+  type DiscoverResponse,
+  getCallHistory,
+  getTree,
+  postDiscover,
+  postRefine,
+} from '@/lib/api'
 
 type PageProps = {
   params: Promise<{ sessionId: string }>
@@ -99,9 +105,10 @@ export default function SessionPage({ params }: PageProps) {
           'Invalid phone number. Use E.164 like +1XXXXXXXXXX or US 10-digit.'
         )
       }
-      await postDiscover(normalized)
-      setSessionId(normalized)
-      await fetchTree(normalized)
+      const resp: DiscoverResponse = await postDiscover(normalized)
+      const formattedId = resp.sessionId
+      setSessionId(formattedId)
+      await fetchTree(formattedId)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Discover failed'
       setError(message)
@@ -124,6 +131,7 @@ export default function SessionPage({ params }: PageProps) {
     }
   }, [fetchTree, selectedNode, sessionId])
 
+  const hasSession = useMemo(() => tree !== null && tree !== undefined, [tree])
   const hasTree = useMemo(() => Boolean(tree?.root), [tree])
   const visitedCount = tree?.visitedPaths?.length ?? 0
   const pendingCount = tree?.pendingPaths?.length ?? 0
@@ -135,7 +143,7 @@ export default function SessionPage({ params }: PageProps) {
     <main className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-semibold mb-6">IVR Discovery</h1>
 
-      {!hasTree && (
+      {!hasSession && (
         <Card className="max-w-xl">
           <CardHeader>
             <CardTitle>Start Discovery</CardTitle>
@@ -165,7 +173,7 @@ export default function SessionPage({ params }: PageProps) {
         </Card>
       )}
 
-      {hasTree && (
+      {hasSession && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
@@ -225,7 +233,11 @@ export default function SessionPage({ params }: PageProps) {
               <div className="w-full overflow-x-auto">
                 {tree?.root ? (
                   <TreeGraph root={tree.root} onNodeClick={setSelectedNode} />
-                ) : null}
+                ) : (
+                  <div className="text-sm text-muted-foreground py-8">
+                    No nodes yet. Start discovery to build the tree.
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

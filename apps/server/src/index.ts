@@ -3,7 +3,11 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { z } from 'zod'
 import { DiscoverService } from './discover'
-import { loadSession } from './persist'
+import {
+  ensureSessionScaffold,
+  formatPhoneForFilename,
+  loadSession,
+} from './persist'
 
 const app = new Hono()
 
@@ -38,6 +42,11 @@ app.post('/discover', async (c) => {
   }
   const service = new DiscoverService()
   try {
+    // Ensure a session scaffold exists immediately so GET endpoints won't fail
+    await ensureSessionScaffold(parseResult.data.phone, {
+      minCalls: parseResult.data.minCalls ?? 2,
+      maxCalls: parseResult.data.maxCalls ?? 10,
+    })
     // Fire-and-forget: start discovery without awaiting completion
     void service
       .run({
@@ -64,7 +73,9 @@ app.post('/discover', async (c) => {
     // If scheduling itself throws synchronously, report error
     return c.json({ error: 'Failed to start discovery' }, 500)
   }
-  return c.json({ status: 'queued', sessionId: parseResult.data.phone }, 202)
+  // Always format sessionId as 1-AAA-BBB-CCCC
+  const formatted = formatPhoneForFilename(parseResult.data.phone)
+  return c.json({ status: 'queued', sessionId: formatted }, 202)
 })
 
 // GET /tree/:sessionId (sessionId is phone number)
@@ -75,38 +86,40 @@ app.get('/tree/:sessionId', async (c) => {
     return c.json({ error: 'Invalid sessionId' }, 400)
   }
   const session = await loadSession(sessionId)
-  if (!session || !session.lastRoot) {
+  if (!session) {
     return c.json({ error: 'Not found' }, 404)
   }
-  // derive visited & pending path sets (mirrors logic in DiscoverService)
+  // derive visited & pending path sets (mirrors logic in DiscoverService) if we have a root
   const visitedPaths: string[][] = []
   const pendingPaths: string[][] = []
-  type AnyNode = {
-    id: string
-    options: { digit: string; targetNodeId: string | null }[]
-    children: AnyNode[]
-  }
-  const stack: { node: AnyNode; path: string[] }[] = [
-    { node: session.lastRoot as unknown as AnyNode, path: [] },
-  ]
-  while (stack.length) {
-    const { node, path } = stack.pop() as { node: AnyNode; path: string[] }
-    const options = Array.isArray(node?.options) ? node.options : []
-    const children = Array.isArray(node?.children) ? node.children : []
-    for (const opt of options) {
-      const nextPath = [...path, String(opt.digit)]
-      if (opt.targetNodeId) {
-        visitedPaths.push(nextPath)
-        const child = children.find((c) => c.id === opt.targetNodeId)
-        if (child) stack.push({ node: child, path: nextPath })
-      } else {
-        pendingPaths.push(nextPath)
+  if (session.lastRoot) {
+    type AnyNode = {
+      id: string
+      options: { digit: string; targetNodeId: string | null }[]
+      children: AnyNode[]
+    }
+    const stack: { node: AnyNode; path: string[] }[] = [
+      { node: session.lastRoot as unknown as AnyNode, path: [] },
+    ]
+    while (stack.length) {
+      const { node, path } = stack.pop() as { node: AnyNode; path: string[] }
+      const options = Array.isArray(node?.options) ? node.options : []
+      const children = Array.isArray(node?.children) ? node.children : []
+      for (const opt of options) {
+        const nextPath = [...path, String(opt.digit)]
+        if (opt.targetNodeId) {
+          visitedPaths.push(nextPath)
+          const child = children.find((c) => c.id === opt.targetNodeId)
+          if (child) stack.push({ node: child, path: nextPath })
+        } else {
+          pendingPaths.push(nextPath)
+        }
       }
     }
   }
   return c.json({
     sessionId,
-    root: session.lastRoot,
+    root: session.lastRoot ?? null,
     totalCost: session.totalCost ?? 0,
     callsCount: session.calls?.length ?? 0,
     visitedPaths,
