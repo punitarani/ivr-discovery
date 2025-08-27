@@ -1,6 +1,7 @@
 import type { TranscriptMessage } from './bland/transcript'
 import { extractNodesWithLLM, type LLMExtractedNode } from './llm'
 import type { Node, Option } from './models'
+import { renderIvrTreeAsText } from './tree'
 
 export type Graph = Node
 
@@ -85,7 +86,8 @@ export async function extractAndMergeGraph(
   // Keep for future enhancement; for now, prefer deterministic output for accuracy.
   let extracted: LLMExtractedNode[] = []
   try {
-    extracted = await extractNodesWithLLM(transcript)
+    const treeText = currentRoot ? renderIvrTreeAsText(currentRoot) : undefined
+    extracted = await extractNodesWithLLM(transcript, treeText)
   } catch {
     // Ignore LLM failures for MVP
   }

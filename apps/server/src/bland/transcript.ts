@@ -44,7 +44,7 @@ export async function getCallTranscript(
     const response = await fetch(`https://api.bland.ai/v1/calls/${callId}`, {
       method: 'GET',
       headers: {
-        authorization: env.BLAND_API_KEY,
+        Authorization: env.BLAND_API_KEY,
       },
     })
 

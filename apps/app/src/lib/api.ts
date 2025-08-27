@@ -17,6 +17,10 @@ export type TreeOutput = {
   sessionId: string;
   root: Node;
   totalCost?: number;
+  callsCount?: number;
+  visitedPaths?: string[][];
+  pendingPaths?: string[][];
+  updatedAt?: string;
 };
 
 const API_BASE = "http://localhost:4000";

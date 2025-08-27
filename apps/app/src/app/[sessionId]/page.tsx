@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useId, useMemo, useState } from "react";
 import TreeGraph from "@/components/TreeGraph";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import type { Node, TreeOutput } from "@/lib/api";
 import { getCallHistory, getTree, postDiscover, postRefine } from "@/lib/api";
 
@@ -108,6 +110,11 @@ export default function SessionPage({ params }: PageProps) {
   }, [fetchTree, selectedNode, sessionId]);
 
   const hasTree = useMemo(() => Boolean(tree?.root), [tree]);
+  const visitedCount = tree?.visitedPaths?.length ?? 0;
+  const pendingCount = tree?.pendingPaths?.length ?? 0;
+  const totalPaths = visitedCount + pendingCount;
+  const exploredPct =
+    totalPaths > 0 ? Math.round((visitedCount / totalPaths) * 100) : 0;
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -160,6 +167,38 @@ export default function SessionPage({ params }: PageProps) {
               {loading ? "Refreshing…" : "Refresh"}
             </Button>
           </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Progress</CardTitle>
+              <CardDescription>
+                Overall exploration status for this IVR.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
+                <Badge variant="secondary">Visited {visitedCount}</Badge>
+                <Badge variant="outline">Pending {pendingCount}</Badge>
+                <Badge variant="secondary">
+                  Calls {tree?.callsCount ?? calls.length}
+                </Badge>
+                <Badge variant="secondary">${totalCost.toFixed(2)}</Badge>
+                {tree?.updatedAt ? (
+                  <span className="text-muted-foreground">
+                    Updated {new Date(tree.updatedAt).toLocaleString()}
+                  </span>
+                ) : null}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Explored</span>
+                  <span>
+                    {visitedCount}/{totalPaths} ({exploredPct}%)
+                  </span>
+                </div>
+                <Progress value={exploredPct} />
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>Discovered IVR Tree</CardTitle>
@@ -275,8 +314,10 @@ export default function SessionPage({ params }: PageProps) {
               <div>
                 <div className="text-sm text-muted-foreground">Options</div>
                 <ul className="list-disc pl-5 text-sm">
-                  {selectedNode.options.map((o) => (
-                    <li key={`${selectedNode.id}-${o.digit}`}>
+                  {selectedNode.options.map((o, idx) => (
+                    <li
+                      key={`${selectedNode.id}-${o.digit}-${o.targetNodeId ?? "pending"}-${idx}`}
+                    >
                       {o.digit}: {o.label}
                     </li>
                   ))}
