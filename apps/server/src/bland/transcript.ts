@@ -41,10 +41,14 @@ export async function getCallTranscript(
       return { error: 'Call ID is required' }
     }
 
+    const authHeader = env.BLAND_API_KEY.startsWith('Bearer ')
+      ? env.BLAND_API_KEY
+      : `Bearer ${env.BLAND_API_KEY}`
+
     const response = await fetch(`https://api.bland.ai/v1/calls/${callId}`, {
       method: 'GET',
       headers: {
-        Authorization: env.BLAND_API_KEY,
+        Authorization: authHeader,
       },
     })
 

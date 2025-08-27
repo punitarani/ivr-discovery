@@ -1,6 +1,21 @@
 import { z } from 'zod'
 import { env } from '@/env'
 
+function normalizePhoneToE164(input: string): string | null {
+  const trimmed = String(input || '').trim()
+  if (trimmed.startsWith('+')) {
+    return trimmed
+  }
+  const digitsOnly = (trimmed.match(/\d+/g) || []).join('')
+  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+    return `+${digitsOnly}`
+  }
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`
+  }
+  return null
+}
+
 export const MakeCallRequestSchema = z.object({
   phone_number: z.string().min(1),
   task: z.string().min(1),
@@ -30,16 +45,24 @@ export async function makeCall(
   task: string
 ): Promise<MakeCallResponse> {
   try {
+    const normalized = normalizePhoneToE164(phoneNumber)
+    if (!normalized) {
+      return {
+        status: 'error',
+        error_message:
+          'Invalid phone number. Use E.164 format like +1XXXXXXXXXX (US 10-digit numbers are accepted).',
+      }
+    }
+
     // Validate input
     const validatedInput = MakeCallRequestSchema.parse({
-      phone_number: phoneNumber,
+      phone_number: normalized,
       task,
       wait_for_greeting: true,
       ivr_mode: true,
       record: true,
       voicemail_detect: true,
       max_duration: 300,
-      temperature: 0.1,
     })
 
     console.log('[call] placing call', {
@@ -51,10 +74,14 @@ export async function makeCall(
       max_duration: validatedInput.max_duration,
     })
 
+    const authHeader = env.BLAND_API_KEY.startsWith('Bearer ')
+      ? env.BLAND_API_KEY
+      : `Bearer ${env.BLAND_API_KEY}`
+
     const response = await fetch('https://api.bland.ai/v1/calls', {
       method: 'POST',
       headers: {
-        Authorization: env.BLAND_API_KEY,
+        Authorization: authHeader,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(validatedInput),

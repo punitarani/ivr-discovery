@@ -37,14 +37,34 @@ app.post('/discover', async (c) => {
     )
   }
   const service = new DiscoverService()
-  const result = await service.run({
-    phone: parseResult.data.phone,
-    minCalls: parseResult.data.minCalls ?? 2,
-    maxCalls: parseResult.data.maxCalls ?? 10,
-    currentRoot: parseResult.data.currentRoot,
-    preferredPath: parseResult.data.preferredPath,
-  })
-  return c.json(result)
+  try {
+    // Fire-and-forget: start discovery without awaiting completion
+    void service
+      .run({
+        phone: parseResult.data.phone,
+        minCalls: parseResult.data.minCalls ?? 2,
+        maxCalls: parseResult.data.maxCalls ?? 10,
+        currentRoot: parseResult.data.currentRoot,
+        preferredPath: parseResult.data.preferredPath,
+      })
+      .then((res) => {
+        if ((res as { error?: string }).error) {
+          console.error(
+            '[discover] background run error',
+            (res as { error: string }).error
+          )
+        } else {
+          console.log('[discover] background run completed')
+        }
+      })
+      .catch((err) => {
+        console.error('[discover] background run threw', err)
+      })
+  } catch {
+    // If scheduling itself throws synchronously, report error
+    return c.json({ error: 'Failed to start discovery' }, 500)
+  }
+  return c.json({ status: 'queued', sessionId: parseResult.data.phone }, 202)
 })
 
 // GET /tree/:sessionId (sessionId is phone number)

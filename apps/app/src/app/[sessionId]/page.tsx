@@ -1,120 +1,135 @@
-"use client";
+'use client'
 
-import { use, useCallback, useEffect, useId, useMemo, useState } from "react";
-import TreeGraph from "@/components/TreeGraph";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { use, useCallback, useEffect, useId, useMemo, useState } from 'react'
+import TreeGraph from '@/components/TreeGraph'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import type { Node, TreeOutput } from "@/lib/api";
-import { getCallHistory, getTree, postDiscover, postRefine } from "@/lib/api";
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
+import type { Node, TreeOutput } from '@/lib/api'
+import { getCallHistory, getTree, postDiscover, postRefine } from '@/lib/api'
 
 type PageProps = {
-  params: Promise<{ sessionId: string }>;
-};
+  params: Promise<{ sessionId: string }>
+}
+
+function normalizePhone(input: string): string | null {
+  const t = String(input || '').trim()
+  if (t.startsWith('+')) return t
+  const digits = (t.match(/\d+/g) || []).join('')
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  if (digits.length === 10) return `+1${digits}`
+  return null
+}
 
 export default function SessionPage({ params }: PageProps) {
-  const phoneId = useId();
-  const { sessionId: routeSessionId } = use(params);
-  const initialSessionId = decodeURIComponent(routeSessionId || "");
+  const phoneId = useId()
+  const { sessionId: routeSessionId } = use(params)
+  const initialSessionId = decodeURIComponent(routeSessionId || '')
 
-  const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
-  const [tree, setTree] = useState<TreeOutput | null>(null);
-  const [totalCost, setTotalCost] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [phone, setPhone] = useState(initialSessionId);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [refining, setRefining] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId)
+  const [tree, setTree] = useState<TreeOutput | null>(null)
+  const [totalCost, setTotalCost] = useState<number>(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [phone, setPhone] = useState(initialSessionId)
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const [refining, setRefining] = useState(false)
   const [calls, setCalls] = useState<
     {
-      callId: string;
-      status?: string | null;
-      answered_by?: string | null;
-      price?: number | null;
-      startedAt?: string | null;
-      endedAt?: string | null;
+      callId: string
+      status?: string | null
+      answered_by?: string | null
+      price?: number | null
+      startedAt?: string | null
+      endedAt?: string | null
     }[]
-  >([]);
+  >([])
 
   const fetchTree = useCallback(async (sid: string) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      const t = await getTree(sid);
-      setTree(t);
-      setTotalCost(t?.totalCost ?? 0);
-      const hist = await getCallHistory(sid);
-      setCalls(hist.calls || []);
-      setTotalCost(hist.totalCost ?? t?.totalCost ?? 0);
+      const t = await getTree(sid)
+      setTree(t)
+      setTotalCost(t?.totalCost ?? 0)
+      const hist = await getCallHistory(sid)
+      setCalls(hist.calls || [])
+      setTotalCost(hist.totalCost ?? t?.totalCost ?? 0)
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed fetching tree";
-      setError(message);
-      setTree(null);
-      setCalls([]);
-      setTotalCost(0);
+        err instanceof Error ? err.message : 'Failed fetching tree'
+      setError(message)
+      setTree(null)
+      setCalls([])
+      setTotalCost(0)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     if (sessionId) {
-      fetchTree(sessionId);
+      fetchTree(sessionId)
     }
-  }, [fetchTree, sessionId]);
+  }, [fetchTree, sessionId])
 
   const onStart = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      await postDiscover(phone);
-      setSessionId(phone);
-      await fetchTree(phone);
+      const normalized = normalizePhone(phone)
+      if (!normalized) {
+        throw new Error(
+          'Invalid phone number. Use E.164 like +1XXXXXXXXXX or US 10-digit.'
+        )
+      }
+      await postDiscover(normalized)
+      setSessionId(normalized)
+      await fetchTree(normalized)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Discover failed";
-      setError(message);
+      const message = err instanceof Error ? err.message : 'Discover failed'
+      setError(message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [fetchTree, phone]);
+  }, [fetchTree, phone])
 
   const onRefine = useCallback(async () => {
-    if (!selectedNode || !sessionId) return;
-    setRefining(true);
+    if (!selectedNode || !sessionId) return
+    setRefining(true)
     try {
-      await postRefine(selectedNode.id, sessionId);
-      if (sessionId) await fetchTree(sessionId);
-      setSelectedNode(null);
+      await postRefine(selectedNode.id, sessionId)
+      if (sessionId) await fetchTree(sessionId)
+      setSelectedNode(null)
     } catch {
       // keep dialog open on error
     } finally {
-      setRefining(false);
+      setRefining(false)
     }
-  }, [fetchTree, selectedNode, sessionId]);
+  }, [fetchTree, selectedNode, sessionId])
 
-  const hasTree = useMemo(() => Boolean(tree?.root), [tree]);
-  const visitedCount = tree?.visitedPaths?.length ?? 0;
-  const pendingCount = tree?.pendingPaths?.length ?? 0;
-  const totalPaths = visitedCount + pendingCount;
+  const hasTree = useMemo(() => Boolean(tree?.root), [tree])
+  const visitedCount = tree?.visitedPaths?.length ?? 0
+  const pendingCount = tree?.pendingPaths?.length ?? 0
+  const totalPaths = visitedCount + pendingCount
   const exploredPct =
-    totalPaths > 0 ? Math.round((visitedCount / totalPaths) * 100) : 0;
+    totalPaths > 0 ? Math.round((visitedCount / totalPaths) * 100) : 0
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -140,7 +155,7 @@ export default function SessionPage({ params }: PageProps) {
                 />
               </div>
               <Button onClick={onStart} disabled={loading}>
-                {loading ? "Starting…" : "Start"}
+                {loading ? 'Starting…' : 'Start'}
               </Button>
             </div>
             {error ? (
@@ -155,7 +170,7 @@ export default function SessionPage({ params }: PageProps) {
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
               Session: {tree?.sessionId}
-              {typeof totalCost === "number" ? (
+              {typeof totalCost === 'number' ? (
                 <> · Total cost: ${totalCost.toFixed(2)}</>
               ) : null}
             </div>
@@ -164,7 +179,7 @@ export default function SessionPage({ params }: PageProps) {
               onClick={() => sessionId && fetchTree(sessionId)}
               disabled={loading}
             >
-              {loading ? "Refreshing…" : "Refresh"}
+              {loading ? 'Refreshing…' : 'Refresh'}
             </Button>
           </div>
           <Card>
@@ -245,23 +260,23 @@ export default function SessionPage({ params }: PageProps) {
                           <td className="py-2 pr-4 whitespace-nowrap max-w-[240px] truncate">
                             {c.callId}
                           </td>
-                          <td className="py-2 pr-4">{c.status || "-"}</td>
-                          <td className="py-2 pr-4">{c.answered_by || "-"}</td>
+                          <td className="py-2 pr-4">{c.status || '-'}</td>
+                          <td className="py-2 pr-4">{c.answered_by || '-'}</td>
                           <td className="py-2 pr-4">
                             {c.startedAt
                               ? new Date(c.startedAt).toLocaleString()
-                              : "-"}
+                              : '-'}
                           </td>
                           <td className="py-2 pr-4">
                             {c.endedAt
                               ? new Date(c.endedAt).toLocaleString()
-                              : "-"}
+                              : '-'}
                           </td>
                           <td className="py-2 pr-0 text-right">
                             $
-                            {typeof c.price === "number"
+                            {typeof c.price === 'number'
                               ? c.price.toFixed(2)
-                              : "0.00"}
+                              : '0.00'}
                           </td>
                         </tr>
                       ))}
@@ -316,7 +331,7 @@ export default function SessionPage({ params }: PageProps) {
                 <ul className="list-disc pl-5 text-sm">
                   {selectedNode.options.map((o, idx) => (
                     <li
-                      key={`${selectedNode.id}-${o.digit}-${o.targetNodeId ?? "pending"}-${idx}`}
+                      key={`${selectedNode.id}-${o.digit}-${o.targetNodeId ?? 'pending'}-${idx}`}
                     >
                       {o.digit}: {o.label}
                     </li>
@@ -325,7 +340,7 @@ export default function SessionPage({ params }: PageProps) {
               </div>
               <div className="pt-2">
                 <Button onClick={onRefine} disabled={refining}>
-                  {refining ? "Refining…" : "Refine"}
+                  {refining ? 'Refining…' : 'Refine'}
                 </Button>
               </div>
             </div>
@@ -333,5 +348,5 @@ export default function SessionPage({ params }: PageProps) {
         </DialogContent>
       </Dialog>
     </main>
-  );
+  )
 }

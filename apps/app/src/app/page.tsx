@@ -1,41 +1,56 @@
-"use client";
+'use client'
 
-import { useRouter } from "next/navigation";
-import { useCallback, useId, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useRouter } from 'next/navigation'
+import { useCallback, useId, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { postDiscover } from "@/lib/api";
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { postDiscover } from '@/lib/api'
 
-const ONE_PHONE_NUMBER = "+15555555555";
+const ONE_PHONE_NUMBER = '+15555555555'
+
+function normalizePhone(input: string): string | null {
+  const t = String(input || '').trim()
+  if (t.startsWith('+')) return t
+  const digits = (t.match(/\d+/g) || []).join('')
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  if (digits.length === 10) return `+1${digits}`
+  return null
+}
 
 export default function Home() {
-  const phoneId = useId();
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [phone, setPhone] = useState(ONE_PHONE_NUMBER);
+  const phoneId = useId()
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [phone, setPhone] = useState(ONE_PHONE_NUMBER)
 
   const onStart = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     try {
-      await postDiscover(phone);
-      router.push(`/${encodeURIComponent(phone)}`);
+      const normalized = normalizePhone(phone)
+      if (!normalized) {
+        throw new Error(
+          'Invalid phone number. Use E.164 like +1XXXXXXXXXX or US 10-digit.'
+        )
+      }
+      await postDiscover(normalized)
+      router.push(`/${encodeURIComponent(normalized)}`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Discover failed";
-      setError(message);
+      const message = err instanceof Error ? err.message : 'Discover failed'
+      setError(message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [phone, router]);
+  }, [phone, router])
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -60,12 +75,12 @@ export default function Home() {
               />
             </div>
             <Button onClick={onStart} disabled={loading}>
-              {loading ? "Starting…" : "Start"}
+              {loading ? 'Starting…' : 'Start'}
             </Button>
           </div>
           {error ? <p className="text-sm text-red-600 mt-2">{error}</p> : null}
         </CardContent>
       </Card>
     </main>
-  );
+  )
 }
