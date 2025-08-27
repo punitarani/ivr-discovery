@@ -17,6 +17,7 @@ export type Node = {
   options: Option[]
   children: Node[]
 }
+
 export const NodeSchema: z.ZodType<Node> = z.lazy(() =>
   z.object({
     id: z.string().min(1),

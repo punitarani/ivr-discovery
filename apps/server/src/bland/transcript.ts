@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { env } from '../env'
 
-const Role = z.enum(['user', 'assistant'])
+const Role = z.enum(['user', 'assistant', 'agent-action'])
 
 // Transcript schema from Bland API
 const TranscriptSchema = z.object({
@@ -76,6 +76,7 @@ function mapRole(role: string): z.infer<typeof Role> {
 
   if (lowerRole === 'user') return 'user'
   if (lowerRole === 'assistant') return 'assistant'
+  if (lowerRole === 'agent-action') return 'assistant'
 
   // Default to assistant for any other role
   console.warn(`Unknown role: ${role}`)
