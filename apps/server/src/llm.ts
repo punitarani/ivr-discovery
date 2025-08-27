@@ -20,7 +20,7 @@ export const LLMExtractedNodesSchema = z.object({
   nodes: z.array(LLMExtractedNodeSchema),
 })
 
-const model = google('gemini-2.5-flash')
+const model = google('gemini-2.5-pro')
 
 /**
  * Calls Gemini 2.5 Flash via Vercel AI SDK to extract nodes from a transcript.
@@ -54,6 +54,7 @@ export async function extractNodesWithLLM(
     system,
     prompt: user,
     schema: LLMExtractedNodesSchema,
+    temperature: 0.25,
   })
 
   return object.nodes

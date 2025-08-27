@@ -5,7 +5,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "lint": "biome lint --write",
+    "lint": "biome lint --write --unsafe",
     "format": "biome format --write",
     "type-check": "tsc --noEmit"
   },

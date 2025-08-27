@@ -2,10 +2,12 @@ import '@/env'
 import { DiscoverService } from '@/discover'
 import { renderIvrTreeAsText } from '@/tree'
 
-const callId = process.argv[2] || 'e283cfa8-3489-4190-b103-6c46d7449d65'
+const phone = process.argv[2] || '+18007521547'
+const minCalls = Number.parseInt(process.argv[3] || '2', 10)
+const maxCalls = Number.parseInt(process.argv[4] || '10', 10)
 
 const service = new DiscoverService()
-const result = await service.run({ callId })
+const result = await service.run({ phone, minCalls, maxCalls })
 
 if ('error' in result) {
   console.error(`Discover error: ${result.error}`)

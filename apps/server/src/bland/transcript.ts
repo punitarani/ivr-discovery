@@ -71,6 +71,29 @@ export async function getCallTranscript(
   }
 }
 
+// Parse a concatenated transcript string like:
+// "user: ...\n agent-action: ... \n assistant: ..."
+export function parseConcatenatedTranscript(
+  concatenated: string
+): TranscriptMessage[] {
+  const lines = concatenated
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  const out: TranscriptMessage[] = []
+  for (const line of lines) {
+    const m = /^(user|assistant|agent-action)\s*:\s*(.*)$/i.exec(line)
+    if (!m) continue
+    const role = mapRole(m[1])
+    const text = m[2].trim()
+    if (text.length === 0) continue
+    // Skip noisy waiting markers
+    if (/^\[waiting\]/i.test(text)) continue
+    out.push({ role, message: text })
+  }
+  return out
+}
+
 function mapRole(role: string): z.infer<typeof Role> {
   const lowerRole = role.toLowerCase().trim()
 

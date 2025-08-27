@@ -12,7 +12,7 @@ The agent is provided:
 
 ```request
 curl --request POST \
-  --url https://us.api.bland.ai/v1/calls \
+  --url https://api.bland.ai/v1/calls \
   --header 'Authorization: Bearer <BLAND_API_KEY>' \
   --header 'Content-Type: application/json' \
   --data '{
