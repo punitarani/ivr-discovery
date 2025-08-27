@@ -112,17 +112,17 @@ Call {
 
 ### Bland Pathways Integration (Flow & Endpoints)
 
-**Goal**: use Bland’s Pathways + Calls API to place calls, detect IVRs, fetch high‑quality transcripts, and drive the BFS/DFS explorer.
+**Goal**: use Bland’s Pathways + Calls API to run a deterministic Plan → Call → Analyze loop: place calls, detect IVRs, fetch high‑quality transcripts, and update the tree.
 
 **Core endpoints we will call**
 
-1. **POST /v1/calls** — start a call with a Pathway agent. Key body fields we’ll use: `phone_number`, `pathway_id`, `wait_for_greeting` (aka `wait`), optional `voicemail_detect`, `max_duration`, `record` (to allow corrected transcripts). Returns `call_id`. citeturn2view0turn5view0
-2. **GET /v1/calls/{call\_id}** — poll call status and retrieve `answered_by`, `status`, `price`, `recording_url`, `concatenated_transcript`, and granular `transcripts`. citeturn3view0
-3. **GET /v1/calls/{call\_id}/correct** — fetch corrected & aligned transcripts (improves ASR quality; includes diarization and role alignment). citeturn4view0
-4. **GET /v1/calls** — list calls for a session to build call history quickly if needed. citeturn1view0
-5. **POST /v1/postcall/webhooks/create** *(optional)* — push completed call payloads to our backend instead of polling. Useful to update the queue when calls end. citeturn6view0
+1. **POST /v1/calls** — start a call with a Pathway agent. Key body fields: `phone_number`, `pathway_id`, `wait_for_greeting: true`, optional `voicemail_detect`, `max_duration`, `record: true`. Returns `id`.
+2. **GET /v1/calls/{id}** — poll call status and retrieve `answered_by`, `status`, `price`, `recording_url`, `concatenated_transcript`, and granular `transcripts`.
+3. **GET /v1/calls/{id}/correct** — fetch corrected & aligned transcripts (preferred for parsing).
+4. **GET /v1/calls** — list recent calls (optional, for history reconciliation).
+5. **POST /v1/postcall/webhooks/create** *(optional)* — push completed call payloads to our backend instead of polling.
 
-> Note: The **Bland Turbo** model excludes IVR navigation; we will use the default model for IVR flows and enable `wait_for_greeting` to avoid speaking first. citeturn2view0
+> Note: The **Bland Turbo** model excludes IVR navigation; we will use the default model for IVR flows and enable `wait_for_greeting` to avoid speaking first.
 
 **Pathways usage (minimal for MVP)**
 
@@ -144,7 +144,7 @@ Call {
 
 **What we read from Bland per call**
 
-* `answered_by`, `status`, `price`, `concatenated_transcript`, `transcripts[]`, optional `recording_url`, and (if Pathway) `pathway_logs`. These fields power confidence scoring, history, and visualization. citeturn3view0
+* `answered_by`, `status`, `price`, `concatenated_transcript`, `transcripts[]`, optional `recording_url`, and (if Pathway) `pathway_logs`. These fields power confidence scoring, history, and visualization.
 
 ## Frontend (Next.js App)
 
